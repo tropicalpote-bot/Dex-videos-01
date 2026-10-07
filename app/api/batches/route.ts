@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
     method: "POST",
     headers: {
       apikey: supabaseKey,
-      Authorization: `Bearer ${supabaseKey}`,
       "content-type": "application/json",
       Prefer: "return=minimal",
     },
