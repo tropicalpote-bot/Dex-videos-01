@@ -6,7 +6,9 @@ const MAX_IMPORT_VIDEOS = 500;
 
 function identifyPlatform(value: string): Platform | null {
   try {
-    const host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:") return null;
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
     if (host === "instagram.com" || host.endsWith(".instagram.com")) return "instagram";
     if (host === "facebook.com" || host.endsWith(".facebook.com") || host === "fb.watch") return "facebook";
   } catch {}
@@ -57,10 +59,10 @@ export async function POST(request: NextRequest) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return NextResponse.json({ error: "O importador de links ainda não está conectado." }, { status: 503 });
   const body = await request.json().catch(() => null) as null | { url?: string; limit?: number };
-  const targetUrl = body?.url?.trim() || "";
+  const targetUrl = typeof body?.url === "string" ? body.url.trim() : "";
   const platform = identifyPlatform(targetUrl);
   if (!platform) return NextResponse.json({ error: "Cole um link público válido do Instagram ou Facebook." }, { status: 400 });
-  const limit = Math.min(MAX_IMPORT_VIDEOS, Math.max(1, Number(body?.limit) || 20));
+  const limit = Math.min(MAX_IMPORT_VIDEOS, Math.max(1, Math.floor(Number(body?.limit)) || 20));
   const actorId = platform === "instagram" ? "apify~instagram-scraper" : "crawlerbros~facebook-posts-scraper";
   const input = platform === "instagram"
     ? { directUrls: [targetUrl], resultsType: "posts", resultsLimit: limit, addParentData: false }
@@ -83,7 +85,7 @@ export async function GET(request: NextRequest) {
   const runId = request.nextUrl.searchParams.get("runId") || "";
   const datasetId = request.nextUrl.searchParams.get("datasetId") || "";
   const platform = request.nextUrl.searchParams.get("platform") as Platform;
-  const limit = Math.min(MAX_IMPORT_VIDEOS, Math.max(1, Number(request.nextUrl.searchParams.get("limit")) || 20));
+  const limit = Math.min(MAX_IMPORT_VIDEOS, Math.max(1, Math.floor(Number(request.nextUrl.searchParams.get("limit"))) || 20));
   if (!/^[a-zA-Z0-9_-]+$/.test(runId) || !/^[a-zA-Z0-9_-]+$/.test(datasetId) || !["instagram", "facebook"].includes(platform)) {
     return NextResponse.json({ error: "Consulta inválida." }, { status: 400 });
   }
